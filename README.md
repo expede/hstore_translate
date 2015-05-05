@@ -55,6 +55,12 @@ I18n.locale = :he
 post.title # => אתר זה טוב
 ```
 
+To get a list of translated attributes on a model, use the `::translated_attrs` class method
+
+```ruby
+Post.translated_attrs = [:title, :description]
+```
+
 You also have locale-specific convenience methods from [easy_globalize3_accessors](https://github.com/paneq/easy_globalize3_accessors):
 
 ```ruby

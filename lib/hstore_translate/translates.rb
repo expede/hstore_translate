@@ -14,6 +14,25 @@ module HstoreTranslate
           read_hstore_translation(attr_name)
         end
 
+        define_method "missing_#{attr_name}_translations" do
+          I18n.available_locales.map(&:to_s) - send("#{attr_name}_translations").keys
+        end
+
+        define_method "#{attr_name}_language" do
+          send("#{attr_name}_translations").keys
+        end
+
+        define_method "mismatched_#{attr_name}_translations_for" do
+          langs = object.class.hstore_attrs.flat_map { |attr| send(attr).keys }.uniq
+          langs - send("#{attr_name}_translations").keys
+        end
+
+        define_method :remove_empty_hstore_keys do
+          translated_attrs.each do |attr|
+            send("#{attr}_translations").delete_if { |_, v| v.empty? }
+           end
+        end
+
         define_method "#{attr_name}=" do |value|
           write_hstore_translation(attr_name, value)
         end
@@ -56,7 +75,7 @@ module HstoreTranslate
         if fallback_locales = hstore_translate_fallback_locales(locale)
           fallback_locales.each do |fallback_locale|
             t = translations[fallback_locale.to_s]
-            if t && !t.empty? # differs from blank?
+            translation = t if t && t.any?
               translation = t
               break
             end
