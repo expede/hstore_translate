@@ -18,19 +18,13 @@ module HstoreTranslate
           I18n.available_locales.map(&:to_s) - send("#{attr_name}_translations").keys
         end
 
-        define_method "#{attr_name}_language" do
+        define_method "#{attr_name}_languages" do
           send("#{attr_name}_translations").keys
         end
 
-        define_method "mismatched_#{attr_name}_translations_for" do
+        define_method "mismatched_#{attr_name}_translations" do
           langs = object.class.hstore_attrs.flat_map { |attr| send(attr).keys }.uniq
           langs - send("#{attr_name}_translations").keys
-        end
-
-        define_method :remove_empty_hstore_keys do
-          translated_attrs.each do |attr|
-            send("#{attr}_translations").delete_if { |_, v| v.empty? }
-           end
         end
 
         define_method "#{attr_name}=" do |value|
@@ -41,12 +35,20 @@ module HstoreTranslate
           quoted_translation_store = connection.quote_column_name("#{attr_name}_translations")
           where("#{quoted_translation_store} @> hstore(:locale, :value)", locale: locale, value: value)
         end
+
+        # Delete blank translations, unless allow_blank is true
+        unless attr.try(:[], :allow_blank)
+          included do
+            before_validation do
+              send("#{attr}_translations").delete_if { |_, v| v.empty? }
+            end
+          end
+        end
       end
 
       alias_method_chain :respond_to?, :translates
       alias_method_chain :method_missing, :translates
     end
-
     # Improve compatibility with the gem globalize
     def translates?
       included_modules.include?(InstanceMethods)
@@ -62,6 +64,13 @@ module HstoreTranslate
       end
 
       protected
+
+      def remove_empty_hstore_keys
+        translated_attrs.each do |attr|
+          next if attr[:allow_blank] == false
+          send("#{attr}_translations").delete_if { |_, v| v.empty? }
+        end
+      end
 
       def hstore_translate_fallback_locales(locale)
         return if @enabled_fallback == false || !I18n.respond_to?(:fallbacks)
