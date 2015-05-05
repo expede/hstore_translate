@@ -84,7 +84,7 @@ module HstoreTranslate
         if fallback_locales = hstore_translate_fallback_locales(locale)
           fallback_locales.each do |fallback_locale|
             t = translations[fallback_locale.to_s]
-            if t && t.empty? # differs from blank?
+            if t && !t.empty? # differs from blank?
               translation = t
               break
             end
